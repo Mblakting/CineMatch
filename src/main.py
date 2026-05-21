@@ -804,7 +804,7 @@ if query:
                     )
                     st.html(card_html)
 
-                    if st.button("🔍 Cari film ini", key=f"view_{source_id}_{rec['id']}", use_container_width=True):
+                    if st.button("🔍 Lihat Detail Film", key=f"view_{source_id}_{rec['id']}", use_container_width=True):
                         st.session_state.search_query = rec["title"]
                         st.rerun()
 
@@ -900,7 +900,7 @@ if st.session_state.show_taste_recs:
                         )
                         st.html(taste_card_html)
 
-                        if st.button("🔍 Cari film ini", key=f"taste_view_{rec['id']}", use_container_width=True):
+                        if st.button("🔍 Lihat Detail Film", key=f"taste_view_{rec['id']}", use_container_width=True):
                             st.session_state.search_query = rec["title"]
                             st.session_state.show_taste_recs = False
                             st.rerun()
