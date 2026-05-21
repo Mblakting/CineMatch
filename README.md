@@ -1,141 +1,147 @@
 # CineMatch
 
-CineMatch adalah aplikasi web rekomendasi film realtime berbasis Streamlit
-yang mengambil data film langsung dari TMDB dan memberi peringkat kandidat
-menggunakan model peringkat custom yang dibuat di dalam proyek.
+CineMatch adalah aplikasi web rekomendasi film yang memberikan rekomendasi
+personal secara real-time dengan mengambil data film dari TMDB dan
+memeringkatnya menggunakan model peringkat internal yang dapat disesuaikan.
 
-Demo live: https://cinematch-rekomendasi.streamlit.app/
-Repo: https://github.com/Mblakting/CineMatch
+Untuk menggunakan aplikasi, cukup kunjungi:
+https://cinematch-rekomendasi.streamlit.app/
 
----
+## Ringkasan singkat
 
-## Ringkasan singkat (untuk dosen / penguji)
+CineMatch menyediakan pengalaman rekomendasi film interaktif yang:
 
-- Mengambil data film secara realtime dari TMDB (no local dataset).
-- Mengumpulkan kandidat dari endpoints TMDB (recommendations, similar,
-  discovery, search by keywords/franchise).
-- Mengekstrak fitur film (genre, keywords, story/overview, people, quality,
-  era, franchise) dan menghitung kesamaan menggunakan metrik interpretable
-  (Jaccard, token overlap, TF-IDF cosine, heuristics).
-- Peringkat akhir dibuat dari kombinasi bobot fitur (base weights) yang dapat
-  disesuaikan secara online selama sesi dari feedback pengguna (👍 / 👎).
+- Mengambil data film secara langsung dari The Movie Database (TMDB) — tidak
+	membutuhkan dataset lokal.
+- Mengumpulkan kandidat dari berbagai endpoint TMDB (recommendations, similar,
+	discovery, dan pencarian kata kunci/franchise) dan memperkaya detail film
+	(keywords, credits, videos) saat diperlukan.
+- Menghitung fitur interpretable (genre, kata kunci, kesamaan cerita/overview,
+	kesamaan pemeran/sutradara, kualitas rating, kedekatan era, sinyal popularitas,
+	dan kecocokan franchise) lalu menggabungkannya dengan bobot untuk memberi
+	skor akhir rekomendasi.
+- Menerapkan learning sederhana secara online: umpan balik pengguna (👍/👎)
+	mempengaruhi bobot perankingan selama sesi Streamlit berjalan.
 
-Kode utama:
-- UI & integrasi TMDB: `src/main.py`
-- Konfigurasi: `src/core/config.py`
-- Engine peringkat / taste model: `src/engines/realtime_ai_engine.py`
+## Demo
 
----
+Demo publik dan cara termudah untuk mencoba CineMatch:
 
-## Cara menjalankan secara lokal (untuk penguji)
+https://cinematch-rekomendasi.streamlit.app/
 
-Persyaratan: Python 3.10 atau lebih baru.
+## Fitur Utama
 
-1. Clone repo dan masuk folder:
+- Pencarian film cepat (query judul) dan tampilan detail film lengkap.
+- Pengumpulan kandidat real-time dari TMDB (rekomendasi, similar, discover).
+- Model peringkat interpretable yang menggabungkan beberapa sinyal fitur.
+- Umpan balik interaktif: pengguna dapat menandai film `Suka` atau `Tidak Cocok`.
+- Rekomendasi berbasis selera (taste-based) setelah pengguna memberi beberapa
+	tanda suka.
 
-```bash
-git clone https://github.com/Mblakting/CineMatch.git
-cd CineMatch
-```
+## Cara Kerja (singkat, teknis)
 
-2. (Disarankan) buat virtualenv dan aktifkan.
+- Alur utama berada di [src/main.py](src/main.py#L1). Aplikasi mengambil data
+	dari TMDB lewat helper `fetch_api()` dan membangun pool kandidat dengan
+	`collect_live_candidates()` / `collect_taste_candidates()`.
+- Logika perankingan dan konstruksi fitur ada di
+	[src/engines/realtime_ai_engine.py](src/engines/realtime_ai_engine.py#L1).
+	- Fitur yang dihitung meliputi: `tmdb_signal`, `genre_match`, `keyword_match`,
+		`story_match` (cosine TF‑IDF), `people_match`, `quality`, `era_match`, dan
+		`franchise_match`.
+	- Bobot dasar didefinisikan sebagai `BASE_WEIGHTS` dan dapat diupdate secara
+		iteratif dari sampel feedback selama sesi melalui metode `learned_weights()`.
+- Konfigurasi API dan UI tersentral di
+	[src/core/config.py](src/core/config.py#L1) (termasuk `TMDB_API_KEY` default
+	yang saat ini diisi langsung — lihat bagian keamanan di bawah).
 
-3. Install dependency:
+## Quickstart — Jalankan Secara Lokal
+
+Langkah singkat untuk menjalankan aplikasi pada mesin pengembang:
+
+1. (Opsional) Buat virtual environment dan aktifkan.
+2. Install dependency:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-4. (Opsional) tambahkan API key TMDB milik Anda. Jika tidak, aplikasi akan
-   menggunakan API key yang ada di `src/core/config.py` (untuk keperluan tugas).
+3. Set environment variable `TMDB_API_KEY` (rekomendasi):
 
 Windows (PowerShell):
 ```powershell
 setx TMDB_API_KEY "your_api_key_here"
 ```
 
-5. Jalankan aplikasi:
+4. Jalankan Streamlit:
 
 ```bash
 python -m streamlit run src/main.py
 ```
 
-6. Buka browser ke alamat yang ditampilkan oleh Streamlit (mis. http://localhost:8501).
+Catatan: jika `TMDB_API_KEY` tidak diset, aplikasi akan menggunakan nilai
+default yang ada di [src/core/config.py](src/core/config.py#L1). Untuk
+publikasi/produksi, jangan gunakan API key default tersebut.
+
+## Contoh Penggunaan
+
+- Ketik judul film favorit pada kotak pencarian untuk melihat detail dan
+	daftar rekomendasi.
+- Klik `👍 Suka` atau `👎 Tidak Cocok` pada tiap rekomendasi untuk memberikan
+	feedback; setelah beberapa feedback, aktifkan `🎯 Rekomendasikan Film untuk Saya!`
+	untuk rekomendasi berbasis selera.
+- Gunakan `❤️ Simpan ke Tontonan` untuk membuat watchlist sederhana per-sesi.
+
+## Struktur Kode (ringkas)
+
+- `src/main.py`: UI Streamlit, integrasi TMDB, pengumpulan kandidat, dan
+	interaksi pengguna. ([buka file](src/main.py#L1))
+- `src/engines/realtime_ai_engine.py`: pembuatan fitur, model perankingan,
+	logika online learning ringan, dan utility teks (tokenize, idf, cosine).
+	([buka file](src/engines/realtime_ai_engine.py#L1))
+- `src/core/config.py`: konfigurasi aplikasi (API key, UI defaults, dan
+	parameter rekomendasi). ([buka file](src/core/config.py#L1))
+
+## Pengembangan & Kontribusi
+
+- Untuk fitur baru, jalankan aplikasi lokal seperti bagian Quickstart di atas
+	dan kerjakan cabang (branch) terpisah.
+- Ikuti praktik pengembangan Python standar: gunakan virtualenv, jalankan
+	perubahan kecil, dan uji interaksi Streamlit secara manual.
+- Jika Anda ingin menambahkan persistensi (mis. SQLite atau remote DB),
+	perhatikan bahwa saat ini semua feedback disimpan hanya di `st.session_state`.
+
+## Keamanan & Privasi
+
+- Hati‑hati dengan `TMDB_API_KEY`: saat ini repo memiliki nilai default di
+	[src/core/config.py](src/core/config.py#L1). Untuk rilis publik atau
+	kolaborasi, pindahkan kunci ke environment variable `TMDB_API_KEY` dan hapus
+	nilai default dari kode.
+- Aplikasi tidak menyimpan data pengguna ke disk atau DB; semua feedback
+	hanya bertahan selama sesi Streamlit berjalan.
+
+## Penjelasan Rekomendasi (singkat)
+
+- Sistem menghitung beberapa fitur yang mudah dijelaskan dari metadata
+	TMDB (genre, keywords, overview, credits).
+- Fitur dikombinasikan dengan bobot dasar untuk menghasilkan `ai_score`.
+- Jika pengguna memberi feedback, bobot disesuaikan secara online sehingga
+	rekomendasi berikutnya lebih mencerminkan preferensi saat itu.
+
+## Lisensi & Kredit
+
+- Pembuat: Rahmadtzy • 2026
+- Lisensi: sesuaikan dengan kebutuhan Anda (file lisensi terpisah jika
+	diperlukan).
 
 ---
 
-## Cara menggunakan (untuk orang awam)
+Jika Anda mau, saya bisa:
 
-1. Ketik judul film yang Anda suka di kotak pencarian (mis. "Inception").
-2. Aplikasi akan menampilkan detail film dan daftar rekomendasi mirip.
-3. Jika Anda suka rekomendasi, klik tombol "👍 Suka"; jika tidak cocok, klik
-   "👎 Tidak Cocok". Pilihan ini membantu CineMatch menyesuaikan rekomendasi
-   selama sesi Anda.
-4. Untuk menyimpan film agar tidak lupa, klik "❤️ Simpan ke Tontonan" (watchlist).
-5. Setelah memberi tanda suka pada minimal 2 film, Anda bisa menekan tombol
-   "🎯 Rekomendasikan Film untuk Saya!" di sidebar untuk rekomendasi personal.
+- Menyempurnakan bagian “Penjelasan Rekomendasi” dengan contoh konkret dari
+	keluaran model (contoh `ai_score` + reasons), atau
+- Menambahkan `CONTRIBUTING.md` dan `SECURITY.md` singkat untuk panduan
+	kolaborator.
 
-Catatan: semua pembelajaran terjadi hanya selama sesi Streamlit saat itu—jika
-halaman direfresh, data feedback tidak persist.
+Beritahu saya bagian mana yang ingin Anda perkuat atau jika mau langsung saya
+commit perubahan ini ke README di repo.
 
----
-
-## Penjelasan teknis singkat (untuk dokumentasi tugas)
-
-- Fitur yang dihitung per kandidat: `tmdb_signal` (popularitas dari pool),
-  `genre_match` (Jaccard pada genre IDs), `keyword_match` (overlap token),
-  `story_match` (cosine similarity TF-IDF pada token cerita/overview),
-  `people_match` (overlap aktor/sutradara), `quality` (fungsi rating + vote
-  confidence), `era_match` (kedekatan tahun rilis), `franchise_match`.
-- Base weights default disimpan di engine; bobot ini dapat diupdate tiap kali
-  pengguna memberikan feedback lewat fungsi `learned_weights()`.
-- Fungsi penjelasan hasil rekomendasi: `explain_recommendation()` — menghasilkan
-  alasan yang mudah dibaca untuk tiap rekomendasi.
-
-Referensi file:
-- UI & alur: [src/main.py](src/main.py#L1)
-- Engine dan model: [src/engines/realtime_ai_engine.py](src/engines/realtime_ai_engine.py#L1)
-- Konfigurasi API: [src/core/config.py](src/core/config.py#L1)
-
----
-
-## Catatan keamanan & pengembangan
-
-- Saat ini ada `API_KEY` default di `src/core/config.py`. Untuk deployment
-  publik sebaiknya gunakan environment variable `TMDB_API_KEY` dan hapus/acak
-  value default agar tidak mengekspos kunci.
-- Aplikasi tidak menyimpan data ke database—semua feedback hanya tersimpan di
-  `st.session_state` selama sesi. Untuk menyimpan preferensi antar sesi,
-  tambahkan persistence (SQLite / file JSON / remote DB).
-
----
-
-## Kelebihan & keterbatasan (untuk presentasi tugas)
-
-- Kelebihan:
-  - Interaksi realtime dengan TMDB (tidak perlu dataset lokal).
-  - Model peringkat interpretable dengan penjelasan rekomendasi.
-  - Online learning sederhana dari feedback pengguna.
-
-- Keterbatasan:
-  - Tidak ada persistensi antar sesi.
-  - Bergantung pada ketersediaan & rate-limit TMDB.
-  - Bukan model deep-learning pre-trained; ini heuristik klasik + TF-IDF.
-
----
-
-## Checklist pengumpulan tugas (saran)
-
-- [x] Kode bersih & terstruktur di `src/`.
-- [x] Demo live: https://cinematch-rekomendasi.streamlit.app/
-- [x] Instruksi jalankan lokal tercantum di atas.
-- [ ] (Opsional) Hapus API key default sebelum publikasi final.
-- [ ] (Opsional) Tambahkan screenshot / video singkat antarmuka untuk lampiran.
-
----
-
-Jika Anda ingin, saya bisa:
-- menambahkan screenshot dan contoh penggunaan lengkap untuk lampiran tugas, atau
-- membuat file `SUBMISSION.md` singkat untuk bahan presentasi.
-
-Terakhir: tidak ada fungsi dalam kode yang saya ubah—README ini hanya dokumentasi.
